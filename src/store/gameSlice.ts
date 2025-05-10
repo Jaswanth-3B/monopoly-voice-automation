@@ -9,14 +9,34 @@ const initialState: GameState = {
   cards: []
 };
 
+export interface AddPlayerPayload {
+  name: string;
+  money: number;
+  position: number;
+  token: string;
+  tokenIcon: string;
+  color: string;
+}
+
 const gameSlice = createSlice({
   name: 'game',
   initialState,
   reducers: {
-    addPlayer(state, action: PayloadAction<Player>) {
-      state.players.push(action.payload);
+    addPlayer: (state, action) => {
+      const newPlayer = {
+        id: String(state.players.length + 1), // Simple sequential ID as string
+        name: String(state.players.length + 1), // Use sequential numbers for names
+        money: action.payload.money,
+        position: action.payload.position,
+        properties: [],
+        cards: [],
+        token: action.payload.token,
+        tokenIcon: action.payload.tokenIcon,
+        color: action.payload.color
+      };
+      state.players.push(newPlayer);
     },
-    updatePlayerMoney(state, action: PayloadAction<{ playerId: number; amount: number }>) {
+    updatePlayerMoney(state, action: PayloadAction<{ playerId: string; amount: number }>) {
       const player = state.players.find(p => p.id === action.payload.playerId);
       if (player) {
         player.money += action.payload.amount;
@@ -25,20 +45,20 @@ const gameSlice = createSlice({
     addTransaction(state, action: PayloadAction<Transaction>) {
       state.transactions.push(action.payload);
     },
-    updatePlayerPosition(state, action: PayloadAction<{ playerId: number; position: number }>) {
+    updatePlayerPosition(state, action: PayloadAction<{ playerId: string; position: number }>) {
       const player = state.players.find(p => p.id === action.payload.playerId);
       if (player) {
         player.position = action.payload.position;
       }
     },
-    updatePropertyOwner(state, action: PayloadAction<{ propertyId: number; ownerId: number }>) {
+    updatePropertyOwner(state, action: PayloadAction<{ propertyId: number; ownerId: string }>) {
       const property = state.properties.find(p => p.id === action.payload.propertyId);
       if (property) {
         property.owner = action.payload.ownerId;
         // Also update the player's properties array
         const player = state.players.find(p => p.id === action.payload.ownerId);
         if (player) {
-          player.properties.push(property);
+          player.properties.push(String(property.id));
         }
       }
     },
@@ -48,13 +68,13 @@ const gameSlice = createSlice({
   }
 });
 
-export const { 
-  addPlayer, 
-  updatePlayerMoney, 
-  addTransaction, 
-  updatePlayerPosition, 
+export const {
+  addPlayer,
+  updatePlayerMoney,
+  addTransaction,
+  updatePlayerPosition,
   updatePropertyOwner,
-  initializeProperties 
+  initializeProperties
 } = gameSlice.actions;
 
 export default gameSlice.reducer;

@@ -4,7 +4,7 @@ import {
   Box, Button, Typography, Paper, IconButton, Dialog, DialogTitle,
   DialogContent, DialogActions, List, ListItem, ListItemText, Tooltip,
   TextField, Tab, Tabs, FormControl, InputLabel, Select, MenuItem,
-  SelectChangeEvent, Grid, FormHelperText
+  SelectChangeEvent, Grid, FormHelperText, Collapse, Alert
 } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import HelpIcon from '@mui/icons-material/Help';
@@ -14,9 +14,17 @@ import { RootState } from '../../store/store';
 
 interface VoiceRecognitionProps {
   onCommand: (command: string) => void;
+  notification: string;
+  showNotification: boolean;
+  onCloseNotification: () => void;
 }
 
-const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ onCommand }) => {
+const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ 
+  onCommand, 
+  notification, 
+  showNotification, 
+  onCloseNotification 
+}) => {
   const [correctedText, setCorrectedText] = useState<string>('');
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [helpOpen, setHelpOpen] = useState<boolean>(false);
@@ -78,25 +86,34 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ onCommand }) => {
   };
 
   // Handle form submission
-  // Handle form submission
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     let command = '';
-  
+
     // Extract player ID from selectedPlayer (format is "Player {name}")
     const selectedPlayerName = selectedPlayer.replace('Player ', '');
     const player = players.find(p => p.name === selectedPlayerName);
-    
+
     if (!player) {
       return; // Don't submit if player not found
     }
-  
+
     switch (operationType) {
       case 'move':
         if (position) {
-          command = `Player ${player.id} moves to position ${position}`;
+          // Calculate new position based on current position and steps
+          const steps = parseInt(position);
+          const currentPos = player.position;
+          let newPosition = currentPos + steps;
+
+          // Handle board wrap-around (40 spaces on board)
+          if (newPosition >= 40) {
+            newPosition = newPosition % 40;
+          }
+
+          command = `Player ${player.name} moves ${steps} steps to position ${newPosition}`;
         } else if (property) {
-          command = `Move player ${player.id} to ${property}`;
+          command = `Move player ${player.name} to ${property}`;
         }
         break;
       case 'pay':
@@ -125,7 +142,7 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ onCommand }) => {
         command = `Player ${player.id} buys ${property}`;
         break;
     }
-  
+
     if (command) {
       onCommand(command);
       // Reset form
@@ -149,14 +166,13 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ onCommand }) => {
     { type: 'BUY', example: 'Player 1 buys Mediterranean Avenue', description: 'Player purchases a property' },
   ];
 
-  // Replace the renderOperationForm function with this updated version
   const renderOperationForm = () => {
     return (
       <Box component="form" onSubmit={handleFormSubmit} sx={{ mt: 2 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-            <FormControl fullWidth required>
-              <InputLabel>Operation Type</InputLabel>
+            <FormControl fullWidth required size="small">
+              <InputLabel sx={{ fontSize: '0.75rem' }}>Operation Type</InputLabel>
               <Select
                 value={operationType}
                 label="Operation Type"
@@ -166,24 +182,38 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ onCommand }) => {
                   setProperty('');
                   setPosition('');
                 }}
+                sx={{ 
+                  fontSize: '0.75rem',
+                  height: '2.2rem',
+                  '& .MuiSelect-select': {
+                    py: 0.5
+                  }
+                }}
               >
-                <MenuItem value="move">Move Player</MenuItem>
-                <MenuItem value="pay">Pay Money</MenuItem>
-                <MenuItem value="collect">Collect Money</MenuItem>
-                <MenuItem value="buy">Buy Property</MenuItem>
+                <MenuItem value="move" sx={{ fontSize: '0.75rem' }}>Move Player</MenuItem>
+                <MenuItem value="pay" sx={{ fontSize: '0.75rem' }}>Pay Money</MenuItem>
+                <MenuItem value="collect" sx={{ fontSize: '0.75rem' }}>Collect Money</MenuItem>
+                <MenuItem value="buy" sx={{ fontSize: '0.75rem' }}>Buy Property</MenuItem>
               </Select>
             </FormControl>
 
-            <FormControl fullWidth required>
-              <InputLabel>Player</InputLabel>
+            <FormControl fullWidth required size="small">
+              <InputLabel sx={{ fontSize: '0.75rem' }}>Player</InputLabel>
               <Select
                 value={selectedPlayer}
                 label="Player"
                 onChange={(e: SelectChangeEvent) => setSelectedPlayer(e.target.value)}
+                sx={{ 
+                  fontSize: '0.75rem',
+                  height: '2.2rem',
+                  '& .MuiSelect-select': {
+                    py: 0.5
+                  }
+                }}
               >
                 {players.map(player => (
-                  <MenuItem key={player.id} value={`Player ${player.name}`}>
-                    {player.name}
+                  <MenuItem key={player.id} value={`Player ${player.name}`} sx={{ fontSize: '0.75rem' }}>
+                    Player {player.name}
                   </MenuItem>
                 ))}
               </Select>
@@ -192,27 +222,43 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ onCommand }) => {
 
           {/* Conditional fields based on operation type */}
           {operationType === 'move' && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-                <TextField
-                  fullWidth
-                  label="Position Number"
-                  value={position}
-                  onChange={(e) => setPosition(e.target.value)}
-                  type="number"
-                  helperText="Enter a position number (0-39)"
-                />
-                <TextField
-                  fullWidth
-                  label="Property Name"
-                  value={property}
-                  onChange={(e) => setProperty(e.target.value)}
-                  helperText="Or enter a property name"
-                />
-              </Box>
-              <FormHelperText>
-                Fill either Position Number OR Property Name
-              </FormHelperText>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Steps to Move"
+                value={position}
+                onChange={(e) => setPosition(e.target.value)}
+                type="number"
+                InputProps={{ 
+                  inputProps: { min: 1 },
+                  sx: { 
+                    fontSize: '0.75rem',
+                    height: '2.2rem'
+                  }
+                }}
+                InputLabelProps={{ 
+                  sx: { fontSize: '0.75rem' },
+                  shrink: true
+                }}
+              />
+              <TextField
+                fullWidth
+                size="small"
+                label="Property Name"
+                value={property}
+                onChange={(e) => setProperty(e.target.value)}
+                InputProps={{ 
+                  sx: { 
+                    fontSize: '0.75rem',
+                    height: '2.2rem'
+                  }
+                }}
+                InputLabelProps={{ 
+                  sx: { fontSize: '0.75rem' },
+                  shrink: true
+                }}
+              />
             </Box>
           )}
 
@@ -221,24 +267,44 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ onCommand }) => {
               <TextField
                 fullWidth
                 required
+                size="small"
                 label="Amount"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 type="number"
-                InputProps={{ inputProps: { min: 1 } }}
+                InputProps={{ 
+                  inputProps: { min: 1 },
+                  sx: { 
+                    fontSize: '0.75rem',
+                    height: '2.2rem'
+                  }
+                }}
+                InputLabelProps={{ 
+                  sx: { fontSize: '0.75rem' },
+                  shrink: true
+                }}
               />
-              <FormControl fullWidth required>
-                <InputLabel>{operationType === 'pay' ? 'Pay To' : 'Collect From'}</InputLabel>
+              <FormControl fullWidth required size="small">
+                <InputLabel sx={{ fontSize: '0.75rem' }}>
+                  {operationType === 'pay' ? 'Pay To' : 'Collect From'}
+                </InputLabel>
                 <Select
                   value={targetPlayer}
                   label={operationType === 'pay' ? 'Pay To' : 'Collect From'}
                   onChange={(e: SelectChangeEvent) => setTargetPlayer(e.target.value)}
+                  sx={{ 
+                    fontSize: '0.75rem',
+                    height: '2.2rem',
+                    '& .MuiSelect-select': {
+                      py: 0.5
+                    }
+                  }}
                 >
-                  <MenuItem value="bank">Bank</MenuItem>
+                  <MenuItem value="bank" sx={{ fontSize: '0.75rem' }}>Bank</MenuItem>
                   {players.map(player => (
                     selectedPlayer !== `Player ${player.name}` && (
-                      <MenuItem key={player.id} value={`Player ${player.name}`}>
-                        {player.name}
+                      <MenuItem key={player.id} value={`Player ${player.name}`} sx={{ fontSize: '0.75rem' }}>
+                        Player {player.name}
                       </MenuItem>
                     )
                   ))}
@@ -251,9 +317,20 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ onCommand }) => {
             <TextField
               fullWidth
               required
+              size="small"
               label="Property Name"
               value={property}
               onChange={(e) => setProperty(e.target.value)}
+              InputProps={{ 
+                sx: { 
+                  fontSize: '0.75rem',
+                  height: '2.2rem'
+                }
+              }}
+              InputLabelProps={{ 
+                sx: { fontSize: '0.75rem' },
+                shrink: true
+              }}
             />
           )}
 
@@ -263,6 +340,11 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ onCommand }) => {
             color="primary"
             fullWidth
             disabled={!operationType || !selectedPlayer}
+            sx={{
+              fontSize: '0.75rem',
+              height: '2.2rem',
+              mt: 1
+            }}
           >
             Execute Operation
           </Button>
@@ -274,19 +356,39 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ onCommand }) => {
   return (
     <Paper elevation={3} sx={{ p: 2, m: 2 }}>
       <Box display="flex" flexDirection="column" gap={2}>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6">Game Operations</Typography>
-          <Tooltip title="Show available commands">
-            <IconButton onClick={() => setHelpOpen(true)} color="primary">
-              <HelpIcon />
+        <Box sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          mb: 0.5
+        }}>
+          <Typography variant="h6" sx={{ fontSize: '0.85rem' }}>
+            Game Operations
+          </Typography>
+          <Tooltip title="View available commands">
+            <IconButton size="small" onClick={() => setHelpOpen(true)}>
+              <HelpIcon sx={{ fontSize: '0.75rem' }} />
             </IconButton>
           </Tooltip>
         </Box>
 
-        <Tabs value={tabValue} onChange={handleTabChange} aria-label="operation methods">
-          <Tab label="Quick Form" />
-          <Tab label="Voice Command" />
-        </Tabs>
+        <Box sx={{ mb: 0.5 }}>
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            sx={{
+              minHeight: 24,
+              '& .MuiTab-root': {
+                minHeight: 24,
+                padding: '2px 8px',
+                fontSize: '0.7rem'
+              }
+            }}
+          >
+            <Tab label="QUICK FORM" />
+            <Tab label="VOICE COMMAND" />
+          </Tabs>
+        </Box>
 
         {tabValue === 0 ? (
           renderOperationForm()
@@ -372,10 +474,32 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ onCommand }) => {
             </Box>
           </>
         )}
+
+        {/* Command Execution Notification */}
+        <Collapse in={showNotification}>
+          <Alert 
+            onClose={onCloseNotification} 
+            severity="info"
+            sx={{ 
+              mt: 2,
+              fontSize: '0.85rem',
+              '& .MuiAlert-message': {
+                fontSize: '0.85rem'
+              }
+            }}
+          >
+            {notification}
+          </Alert>
+        </Collapse>
       </Box>
 
       {/* Help Dialog */}
-      <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="md">
+      <Dialog
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Available Commands</DialogTitle>
         <DialogContent>
           <Typography paragraph>

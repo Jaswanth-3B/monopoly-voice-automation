@@ -1,14 +1,13 @@
 // src/types/gameTypes.ts
 export interface Player {
-  id: number;
+  id: string;
   name: string;
-  money: number;
+  color: string;
+  tokenIcon?: string;
   position: number;
-  properties: Property[];
-  cards: Card[];
-  token?: string;      // Token identifier (car, ship, etc.)
-  tokenIcon?: string;  // Emoji or icon representation
-  color?: string;      // Player color
+  previousPosition?: number;
+  money: number;
+  properties: string[];
 }
 
 export interface Property {
@@ -16,15 +15,15 @@ export interface Property {
   name: string;
   price: number;
   rent: number;
-  owner: number | null;
+  owner: string | null;
   position: number;
   color?: string;
 }
 
 export interface Transaction {
   id: number;
-  from: number;
-  to: number;
+  from: string;
+  to: string;
   amount: number;
   timestamp: Date;
   type: 'RENT' | 'PURCHASE' | 'CHANCE' | 'TAX';
@@ -41,4 +40,10 @@ export interface GameState {
   properties: Property[];
   transactions: Transaction[];
   cards: Card[];
+}
+
+export interface AnimationState {
+  isAnimating: boolean;
+  path: number[];
+  currentPathIndex?: number;
 }

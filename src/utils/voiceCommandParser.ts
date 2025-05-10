@@ -7,11 +7,12 @@ type CommandType = 'MOVE' | 'PAY' | 'COLLECT' | 'BUY' | 'UNKNOWN';
 
 interface ParsedCommand {
   type: CommandType;
-  playerId?: number;
-  targetId?: number;
+  playerId?: string;
+  targetId?: string;
   amount?: number;
   position?: number;
   propertyId?: number;
+  error?: string;
 }
 
 // Update the parseVoiceCommand function to handle case-insensitive property names
@@ -26,7 +27,7 @@ export const parseVoiceCommand = (command: string): ParsedCommand => {
     const propertyMatch = lowerCommand.match(/to\s+([a-zA-Z &]+)(?:$|\s)/i);
     
     if (playerMatch) {
-      const playerId = parseInt(playerMatch[1]);
+      const playerId = playerMatch[1];
       const player = state.game.players.find(p => p.id === playerId);
       
       if (!player) {
@@ -84,9 +85,9 @@ export const parseVoiceCommand = (command: string): ParsedCommand => {
     if (fromPlayerMatch && amountMatch) {
       return {
         type: 'PAY',
-        playerId: parseInt(fromPlayerMatch[1]),
+        playerId: fromPlayerMatch[1],
         amount: parseInt(amountMatch[1]),
-        targetId: toPlayerMatch ? parseInt(toPlayerMatch[1]) : undefined
+        targetId: toPlayerMatch ? toPlayerMatch[1] : undefined
       };
     }
   }
@@ -100,9 +101,9 @@ export const parseVoiceCommand = (command: string): ParsedCommand => {
     if (toPlayerMatch && amountMatch) {
       return {
         type: 'COLLECT',
-        playerId: parseInt(toPlayerMatch[1]),
+        playerId: toPlayerMatch[1],
         amount: parseInt(amountMatch[1]),
-        targetId: fromPlayerMatch ? parseInt(fromPlayerMatch[1]) : undefined
+        targetId: fromPlayerMatch ? fromPlayerMatch[1] : undefined
       };
     }
   }
@@ -121,7 +122,7 @@ export const parseVoiceCommand = (command: string): ParsedCommand => {
       if (property) {
         return {
           type: 'BUY',
-          playerId: parseInt(playerMatch[1]),
+          playerId: playerMatch[1],
           propertyId: property.id
         };
       }
@@ -251,7 +252,7 @@ export const executeCommand = (command: string): string => {
           dispatch(addTransaction({
             id: Date.now(),
             from: player.id,
-            to: 0, // Bank
+            to: '0', // Bank
             amount: property.price,
             timestamp: new Date(),
             type: 'PURCHASE'
@@ -272,8 +273,8 @@ export const executeCommand = (command: string): string => {
 // Update the ParsedCommand interface
 interface ParsedCommand {
   type: CommandType;
-  playerId?: number;
-  targetId?: number;
+  playerId?: string;
+  targetId?: string;
   amount?: number;
   position?: number;
   propertyId?: number;
