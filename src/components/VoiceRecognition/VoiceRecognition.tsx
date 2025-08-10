@@ -1,4 +1,3 @@
-// src/components/VoiceRecognition/VoiceRecognition.tsx
 import React, { useState, useEffect } from 'react';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import {
@@ -10,6 +9,7 @@ import {
 import MicIcon from '@mui/icons-material/Mic';
 import HelpIcon from '@mui/icons-material/Help';
 import EditIcon from '@mui/icons-material/Edit';
+import RestartAltIcon from '@mui/icons-material/RestartAlt'; // <-- 1. IMPORT THE NEW ICON
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 
@@ -53,6 +53,14 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
       setCorrectedText(transcript);
     }
   }, [transcript]);
+  
+  // 2. ADD THE RESET FUNCTION
+  const handleResetGame = () => {
+    if (window.confirm('Are you sure you want to reset the game? All saved data will be lost.')) {
+      localStorage.removeItem('monopolyGameState');
+      window.location.reload();
+    }
+  };
 
   if (!browserSupportsSpeechRecognition) {
     return <Typography>Browser doesn't support speech recognition.</Typography>;
@@ -335,11 +343,19 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
           <Typography variant="h6" sx={{ fontSize: '0.85rem' }}>
             Game Operations
           </Typography>
-          <Tooltip title="View available commands">
-            <IconButton size="small" onClick={() => setHelpOpen(true)}>
-              <HelpIcon sx={{ fontSize: '0.75rem' }} />
-            </IconButton>
-          </Tooltip>
+          <Box>
+            {/* 3. ADD THE NEW ICON BUTTON HERE */}
+            <Tooltip title="Reset Game">
+              <IconButton size="small" onClick={handleResetGame}>
+                <RestartAltIcon sx={{ fontSize: '0.85rem' }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="View available commands">
+              <IconButton size="small" onClick={() => setHelpOpen(true)}>
+                <HelpIcon sx={{ fontSize: '0.75rem' }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
 
         <Box sx={{ mb: 0.5 }}>

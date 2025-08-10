@@ -1,15 +1,21 @@
 // src/store/store.ts
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, Reducer, UnknownAction } from '@reduxjs/toolkit';
 import gameReducer from './gameSlice';
+import { GameState } from '../types/gameTypes'; // Import GameState type
+
+// Define the shape of our entire Redux state
+export interface RootState {
+  game: GameState;
+}
 
 // Function to load the state from localStorage
-const loadState = () => {
+const loadState = (): RootState | undefined => {
   try {
     const serializedState = localStorage.getItem('monopolyGameState');
     if (serializedState === null) {
-      return undefined; // No state saved, so Redux will use the initial state from the reducers
+      return undefined;
     }
-    return JSON.parse(serializedState);
+    return JSON.parse(serializedState) as RootState; // Explicitly cast to our RootState type
   } catch (err) {
     console.error("Could not load state from localStorage", err);
     return undefined;
@@ -30,17 +36,13 @@ const preloadedState = loadState();
 
 export const store = configureStore({
   reducer: {
-    game: gameReducer
+    game: gameReducer as Reducer<GameState, UnknownAction>, // Asserting the type here helps TypeScript
   },
-  preloadedState // This will initialize the store with the saved state if it exists
+  preloadedState,
 });
 
-// Subscribe to store updates to save the state on every change
-// For performance, you could wrap this in a debounce function from lodash
 store.subscribe(() => {
   saveState(store.getState());
 });
 
-
-export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
