@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Provider, useDispatch, useSelector } from 'react-redux';
-import { store, RootState } from './store/store';
+import { Provider, useDispatch } from 'react-redux';
+import { store } from './store/store';
 import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import VoiceRecognition from './components/VoiceRecognition/VoiceRecognition';
 import GameBoard from './components/GameBoard/GameBoard';
