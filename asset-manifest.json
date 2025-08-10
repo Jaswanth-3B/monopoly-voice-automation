@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/monopoly-voice-automation/static/css/main.e6c13ad2.css",
+    "main.js": "/monopoly-voice-automation/static/js/main.7c6eab59.js",
+    "static/js/453.2e014033.chunk.js": "/monopoly-voice-automation/static/js/453.2e014033.chunk.js",
+    "index.html": "/monopoly-voice-automation/index.html",
+    "main.e6c13ad2.css.map": "/monopoly-voice-automation/static/css/main.e6c13ad2.css.map",
+    "main.7c6eab59.js.map": "/monopoly-voice-automation/static/js/main.7c6eab59.js.map",
+    "453.2e014033.chunk.js.map": "/monopoly-voice-automation/static/js/453.2e014033.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e6c13ad2.css",
+    "static/js/main.7c6eab59.js"
+  ]
+}
