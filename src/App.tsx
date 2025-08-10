@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Provider, useDispatch, useSelector } from 'react-redux'; // <-- CORRECTED IMPORT
+import { Provider, useDispatch, useSelector } from 'react-redux';
 import { store, RootState } from './store/store';
-import { Box, CssBaseline, ThemeProvider, createTheme, Snackbar, Alert } from '@mui/material';
+import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import VoiceRecognition from './components/VoiceRecognition/VoiceRecognition';
 import GameBoard from './components/GameBoard/GameBoard';
 import PlayerDashboard from './components/PlayerDashboard/PlayerDashboard';
@@ -46,49 +46,30 @@ const monopolyProperties: Property[] = [
   // Railroads
   { id: 5, name: 'Reading Railroad', price: 200, rent: 25, owner: null, position: 5, color: THEME_COLORS.spcl_cards },
   { id: 15, name: 'Pennsylvania Railroad', price: 200, rent: 25, owner: null, position: 15, color: THEME_COLORS.spcl_cards },
-  { id: 25, name: 'B.&O. Railroad', price: 200, rent: 25, owner: null, position: 25, color: THEME_COLORS.spcl_cards },
-  { id: 35, name: 'Short Line', price: 200, rent: 25, owner: null, position: 35, color: THEME_COLORS.spcl_cards },
+  { id: 25, name: 'B&O Railroad', price: 200, rent: 25, owner: null, position: 25, color: THEME_COLORS.spcl_cards },
+  { id: 35, name: 'Short Line Railroad', price: 200, rent: 25, owner: null, position: 35, color: THEME_COLORS.spcl_cards },
   // Utilities
   { id: 12, name: 'Electric Company', price: 150, rent: 0, owner: null, position: 12, color: THEME_COLORS.spcl_cards },
   { id: 28, name: 'Water Works', price: 150, rent: 0, owner: null, position: 28, color: THEME_COLORS.spcl_cards },
 ];
 
-
 const theme = createTheme({
-  palette: {
-    primary: {
-      main: THEME_COLORS.cards,
+    palette: {
+      primary: { main: THEME_COLORS.cards },
+      secondary: { main: THEME_COLORS.spcl_cards },
+      background: { default: THEME_COLORS.background, paper: '#FFFFFF' },
+      text: { primary: THEME_COLORS.text, secondary: THEME_COLORS.card_text },
     },
-    secondary: {
-      main: THEME_COLORS.spcl_cards,
-    },
-    background: {
-      default: THEME_COLORS.background,
-      paper: '#FFFFFF',
-    },
-    text: {
-      primary: THEME_COLORS.text,
-      secondary: THEME_COLORS.card_text,
-    },
-  },
 });
 
-// Separate component for game content
 const GameContent: React.FC = () => {
   const dispatch = useDispatch();
   const [notification, setNotification] = useState<string>('');
   const [showNotification, setShowNotification] = useState<boolean>(false);
 
-  const [showLoadSuccess, setShowLoadSuccess] = useState(false);
-  const players = useSelector((state: RootState) => state.game.players);
-
   useEffect(() => {
     dispatch(initializeProperties(monopolyProperties));
-    // Check if players exist on app load. If so, show the popup.
-    if (players.length > 0) {
-      setShowLoadSuccess(true);
-    }
-  }, [dispatch]); // This useEffect runs only once
+  }, [dispatch]);
 
   const handleVoiceCommand = (command: string) => {
     const result = executeCommand(command);
@@ -103,58 +84,11 @@ const GameContent: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-
-      {/* This Snackbar will now display the "Game Loaded" popup */}
-      <Snackbar
-        open={showLoadSuccess}
-        autoHideDuration={4000} // Hide after 4 seconds
-        onClose={() => setShowLoadSuccess(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert onClose={() => setShowLoadSuccess(false)} severity="success" sx={{ width: '100%' }}>
-          Loaded saved game from previous session!
-        </Alert>
-      </Snackbar>
-
-      <Box sx={{
-        height: '100vh',
-        width: '100vw',
-        display: 'flex',
-        overflow: 'hidden',
-        bgcolor: '#f5f5f5'
-      }}>
-        {/* Left Column - Game Board */}
-        <Box sx={{
-          width: '75%',
-          height: '100vh',
-          display: 'flex',
-          bgcolor: 'white',
-          borderRadius: 2,
-          boxShadow: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          p: 0.2,
-          boxSizing: 'border-box'
-        }}>
+      <Box sx={{ height: '100vh', width: '100vw', display: 'flex', overflow: 'hidden', bgcolor: '#f5f5f5' }}>
+        <Box sx={{ width: '75%', height: '100vh', display: 'flex', bgcolor: 'white', borderRadius: 2, boxShadow: 1, justifyContent: 'center', alignItems: 'center', p: 0.2, boxSizing: 'border-box' }}>
           <GameBoard />
         </Box>
-
-        {/* Right Column - Controls and Info */}
-        <Box sx={{
-          width: '25%',
-          height: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          p: 2,
-          gap: 2,
-          overflow: 'auto',
-          bgcolor: THEME_COLORS.cards,
-          borderRadius: 2,
-          boxShadow: 1,
-          borderLeft: 1,
-          borderColor: 'divider',
-          boxSizing: 'border-box'
-        }}>
+        <Box sx={{ width: '25%', height: '100vh', display: 'flex', flexDirection: 'column', p: 2, gap: 2, overflow: 'auto', bgcolor: THEME_COLORS.cards, borderRadius: 2, boxShadow: 1, borderLeft: 1, borderColor: 'divider', boxSizing: 'border-box' }}>
           <Box sx={{ flex: '0 0 auto' }}>
             <VoiceRecognition
               onCommand={handleVoiceCommand}
@@ -175,7 +109,6 @@ const GameContent: React.FC = () => {
   );
 };
 
-// Main App component
 const App: React.FC = () => {
   return (
     <Provider store={store}>

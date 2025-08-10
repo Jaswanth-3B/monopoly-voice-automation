@@ -9,7 +9,7 @@ import {
 import MicIcon from '@mui/icons-material/Mic';
 import HelpIcon from '@mui/icons-material/Help';
 import EditIcon from '@mui/icons-material/Edit';
-import RestartAltIcon from '@mui/icons-material/RestartAlt'; // <-- 1. IMPORT THE NEW ICON
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 
@@ -30,6 +30,9 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [helpOpen, setHelpOpen] = useState<boolean>(false);
   const [tabValue, setTabValue] = useState<number>(0);
+  
+  // 1. STATE FOR THE "GAME LOADED" ALERT
+  const [showLoadSuccess, setShowLoadSuccess] = useState(false);
 
   // Form state
   const [operationType, setOperationType] = useState<string>('');
@@ -53,8 +56,14 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
       setCorrectedText(transcript);
     }
   }, [transcript]);
-  
-  // 2. ADD THE RESET FUNCTION
+
+  // 2. USEEFFECT TO CHECK FOR LOADED GAME ONCE
+  useEffect(() => {
+    if (players.length > 0) {
+      setShowLoadSuccess(true);
+    }
+  }, []); // Empty array ensures this runs only once on mount
+
   const handleResetGame = () => {
     if (window.confirm('Are you sure you want to reset the game? All saved data will be lost.')) {
       localStorage.removeItem('monopolyGameState');
@@ -65,7 +74,8 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
   if (!browserSupportsSpeechRecognition) {
     return <Typography>Browser doesn't support speech recognition.</Typography>;
   }
-
+  
+  // ... the rest of your handler functions (handleStartListening, etc.) remain unchanged ...
   const handleStartListening = () => {
     resetTranscript();
     setCorrectedText('');
@@ -134,7 +144,7 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
       setPosition('');
     }
   };
-
+  
   const availableCommands = [
     { type: 'MOVE', example: 'Player Alice moves to position 10', description: 'Move a player to a specific position' },
     { type: 'MOVE', example: 'Move player Bob to Go', description: 'Move a player to a named location' },
@@ -330,7 +340,7 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
       </Box>
     );
   };
-
+  
   return (
     <Paper elevation={3} sx={{ p: 2, m: 2 }}>
       <Box display="flex" flexDirection="column" gap={2}>
@@ -344,7 +354,6 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
             Game Operations
           </Typography>
           <Box>
-            {/* 3. ADD THE NEW ICON BUTTON HERE */}
             <Tooltip title="Reset Game">
               <IconButton size="small" onClick={handleResetGame}>
                 <RestartAltIcon sx={{ fontSize: '0.85rem' }} />
@@ -357,6 +366,23 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
             </Tooltip>
           </Box>
         </Box>
+
+        {/* 3. ADD THE NEW ALERT FOR THE "GAME LOADED" MESSAGE */}
+        <Collapse in={showLoadSuccess}>
+          <Alert
+            onClose={() => setShowLoadSuccess(false)}
+            severity="success"
+            sx={{
+              mb: 2, // Add some margin bottom
+              fontSize: '0.85rem',
+              '& .MuiAlert-message': {
+                fontSize: '0.85rem'
+              }
+            }}
+          >
+            Loaded saved game from previous session!
+          </Alert>
+        </Collapse>
 
         <Box sx={{ mb: 0.5 }}>
           <Tabs
@@ -461,6 +487,7 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
           </>
         )}
 
+        {/* This is the original alert for COMMAND RESULTS */}
         <Collapse in={showNotification}>
           <Alert
             onClose={onCloseNotification}
@@ -478,7 +505,8 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
         </Collapse>
       </Box>
 
-      <Dialog
+      {/* ...Dialog code remains unchanged... */}
+       <Dialog
         open={helpOpen}
         onClose={() => setHelpOpen(false)}
         maxWidth="sm"
