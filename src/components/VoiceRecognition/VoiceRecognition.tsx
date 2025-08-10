@@ -1,10 +1,11 @@
+// src/components/VoiceRecognition/VoiceRecognition.tsx
 import React, { useState, useEffect } from 'react';
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
 import {
   Box, Button, Typography, Paper, IconButton, Dialog, DialogTitle,
   DialogContent, DialogActions, List, ListItem, ListItemText, Tooltip,
   TextField, Tab, Tabs, FormControl, InputLabel, Select, MenuItem,
-  SelectChangeEvent, Grid, FormHelperText, Collapse, Alert
+  SelectChangeEvent, Collapse, Alert
 } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import HelpIcon from '@mui/icons-material/Help';
@@ -19,11 +20,11 @@ interface VoiceRecognitionProps {
   onCloseNotification: () => void;
 }
 
-const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({ 
-  onCommand, 
-  notification, 
-  showNotification, 
-  onCloseNotification 
+const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
+  onCommand,
+  notification,
+  showNotification,
+  onCloseNotification
 }) => {
   const [correctedText, setCorrectedText] = useState<string>('');
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -38,7 +39,6 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
   const [property, setProperty] = useState<string>('');
   const [position, setPosition] = useState<string>('');
 
-  // Get players from Redux store
   const players = useSelector((state: RootState) => state.game.players);
 
   const {
@@ -85,61 +85,33 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
     setTabValue(newValue);
   };
 
-  // Handle form submission
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     let command = '';
 
-    // Extract player ID from selectedPlayer (format is "Player {name}")
-    const selectedPlayerName = selectedPlayer.replace('Player ', '');
-    const player = players.find(p => p.name === selectedPlayerName);
-
-    if (!player) {
-      return; // Don't submit if player not found
-    }
+    const player = players.find(p => p.name === selectedPlayer);
+    if (!player) return;
 
     switch (operationType) {
       case 'move':
         if (position) {
-          // Calculate new position based on current position and steps
-          const steps = parseInt(position);
-          const currentPos = player.position;
-          let newPosition = currentPos + steps;
-
-          // Handle board wrap-around (40 spaces on board)
-          if (newPosition >= 40) {
-            newPosition = newPosition % 40;
-          }
-
-          command = `Player ${player.name} moves ${steps} steps to position ${newPosition}`;
+          command = `Player ${player.name} moves to position ${position}`;
         } else if (property) {
           command = `Move player ${player.name} to ${property}`;
         }
         break;
       case 'pay':
-        if (targetPlayer === 'bank') {
-          command = `Player ${player.id} pays ${amount} to bank`;
-        } else {
-          const targetPlayerName = targetPlayer.replace('Player ', '');
-          const targetPlayerObj = players.find(p => p.name === targetPlayerName);
-          if (targetPlayerObj) {
-            command = `Player ${player.id} pays ${amount} to player ${targetPlayerObj.id}`;
-          }
+        if (targetPlayer) {
+          command = `Player ${player.name} pays ${amount} to ${targetPlayer}`;
         }
         break;
       case 'collect':
-        if (targetPlayer === 'bank') {
-          command = `Player ${player.id} collects ${amount} from bank`;
-        } else {
-          const targetPlayerName = targetPlayer.replace('Player ', '');
-          const targetPlayerObj = players.find(p => p.name === targetPlayerName);
-          if (targetPlayerObj) {
-            command = `Player ${player.id} collects ${amount} from player ${targetPlayerObj.id}`;
-          }
+        if (targetPlayer) {
+            command = `Player ${player.name} collects ${amount} from ${targetPlayer}`;
         }
         break;
       case 'buy':
-        command = `Player ${player.id} buys ${property}`;
+        command = `Player ${player.name} buys ${property}`;
         break;
     }
 
@@ -155,22 +127,21 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
     }
   };
 
-  // Available commands for help dialog
   const availableCommands = [
-    { type: 'MOVE', example: 'Player 1 moves to position 10', description: 'Move a player to a specific position' },
-    { type: 'MOVE', example: 'Move player 2 to Go', description: 'Move a player to a named location' },
-    { type: 'PAY', example: 'Player 1 pays 200 to player 2', description: 'Make a player pay money to another player' },
-    { type: 'PAY', example: 'Player 3 pays 150 to bank', description: 'Make a player pay money to the bank' },
-    { type: 'COLLECT', example: 'Player 2 collects 200 from bank', description: 'Player receives money from the bank' },
-    { type: 'COLLECT', example: 'Player 1 collects 50 from player 3', description: 'Player receives money from another player' },
-    { type: 'BUY', example: 'Player 1 buys Mediterranean Avenue', description: 'Player purchases a property' },
+    { type: 'MOVE', example: 'Player Alice moves to position 10', description: 'Move a player to a specific position' },
+    { type: 'MOVE', example: 'Move player Bob to Go', description: 'Move a player to a named location' },
+    { type: 'PAY', example: 'Player Alice pays 200 to player Bob', description: 'Make a player pay money to another player' },
+    { type: 'PAY', example: 'Player Charlie pays 150 to bank', description: 'Make a player pay money to the bank' },
+    { type: 'COLLECT', example: 'Player Bob collects 200 from bank', description: 'Player receives money from the bank' },
+    { type: 'COLLECT', example: 'Player Alice collects 50 from player Charlie', description: 'Player receives money from another player' },
+    { type: 'BUY', example: 'Player Alice buys Boardwalk', description: 'Player purchases a property' },
   ];
 
   const renderOperationForm = () => {
     return (
       <Box component="form" onSubmit={handleFormSubmit} sx={{ mt: 2 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
             <FormControl fullWidth required size="small">
               <InputLabel sx={{ fontSize: '0.75rem' }}>Operation Type</InputLabel>
               <Select
@@ -182,7 +153,7 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
                   setProperty('');
                   setPosition('');
                 }}
-                sx={{ 
+                sx={{
                   fontSize: '0.75rem',
                   height: '2.2rem',
                   '& .MuiSelect-select': {
@@ -203,7 +174,7 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
                 value={selectedPlayer}
                 label="Player"
                 onChange={(e: SelectChangeEvent) => setSelectedPlayer(e.target.value)}
-                sx={{ 
+                sx={{
                   fontSize: '0.75rem',
                   height: '2.2rem',
                   '& .MuiSelect-select': {
@@ -212,32 +183,31 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
                 }}
               >
                 {players.map(player => (
-                  <MenuItem key={player.id} value={`Player ${player.name}`} sx={{ fontSize: '0.75rem' }}>
-                    Player {player.name}
+                  <MenuItem key={player.id} value={player.name} sx={{ fontSize: '0.75rem' }}>
+                    {player.name}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
           </Box>
 
-          {/* Conditional fields based on operation type */}
           {operationType === 'move' && (
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
               <TextField
                 fullWidth
                 size="small"
-                label="Steps to Move"
+                label="Position Number"
                 value={position}
                 onChange={(e) => setPosition(e.target.value)}
                 type="number"
-                InputProps={{ 
-                  inputProps: { min: 1 },
-                  sx: { 
+                InputProps={{
+                  inputProps: { min: 0, max: 39 },
+                  sx: {
                     fontSize: '0.75rem',
                     height: '2.2rem'
                   }
                 }}
-                InputLabelProps={{ 
+                InputLabelProps={{
                   sx: { fontSize: '0.75rem' },
                   shrink: true
                 }}
@@ -248,13 +218,13 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
                 label="Property Name"
                 value={property}
                 onChange={(e) => setProperty(e.target.value)}
-                InputProps={{ 
-                  sx: { 
+                InputProps={{
+                  sx: {
                     fontSize: '0.75rem',
                     height: '2.2rem'
                   }
                 }}
-                InputLabelProps={{ 
+                InputLabelProps={{
                   sx: { fontSize: '0.75rem' },
                   shrink: true
                 }}
@@ -272,14 +242,14 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 type="number"
-                InputProps={{ 
+                InputProps={{
                   inputProps: { min: 1 },
-                  sx: { 
+                  sx: {
                     fontSize: '0.75rem',
                     height: '2.2rem'
                   }
                 }}
-                InputLabelProps={{ 
+                InputLabelProps={{
                   sx: { fontSize: '0.75rem' },
                   shrink: true
                 }}
@@ -292,7 +262,7 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
                   value={targetPlayer}
                   label={operationType === 'pay' ? 'Pay To' : 'Collect From'}
                   onChange={(e: SelectChangeEvent) => setTargetPlayer(e.target.value)}
-                  sx={{ 
+                  sx={{
                     fontSize: '0.75rem',
                     height: '2.2rem',
                     '& .MuiSelect-select': {
@@ -302,9 +272,9 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
                 >
                   <MenuItem value="bank" sx={{ fontSize: '0.75rem' }}>Bank</MenuItem>
                   {players.map(player => (
-                    selectedPlayer !== `Player ${player.name}` && (
-                      <MenuItem key={player.id} value={`Player ${player.name}`} sx={{ fontSize: '0.75rem' }}>
-                        Player {player.name}
+                    selectedPlayer !== player.name && (
+                      <MenuItem key={player.id} value={player.name} sx={{ fontSize: '0.75rem' }}>
+                        {player.name}
                       </MenuItem>
                     )
                   ))}
@@ -321,13 +291,13 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
               label="Property Name"
               value={property}
               onChange={(e) => setProperty(e.target.value)}
-              InputProps={{ 
-                sx: { 
+              InputProps={{
+                sx: {
                   fontSize: '0.75rem',
                   height: '2.2rem'
                 }
               }}
-              InputLabelProps={{ 
+              InputLabelProps={{
                 sx: { fontSize: '0.75rem' },
                 shrink: true
               }}
@@ -475,12 +445,11 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
           </>
         )}
 
-        {/* Command Execution Notification */}
         <Collapse in={showNotification}>
-          <Alert 
-            onClose={onCloseNotification} 
+          <Alert
+            onClose={onCloseNotification}
             severity="info"
-            sx={{ 
+            sx={{
               mt: 2,
               fontSize: '0.85rem',
               '& .MuiAlert-message': {
@@ -493,7 +462,6 @@ const VoiceRecognition: React.FC<VoiceRecognitionProps> = ({
         </Collapse>
       </Box>
 
-      {/* Help Dialog */}
       <Dialog
         open={helpOpen}
         onClose={() => setHelpOpen(false)}

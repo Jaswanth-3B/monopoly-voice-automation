@@ -1,7 +1,7 @@
 // src/utils/voiceCommandParser.ts
 import { store } from '../store/store';
-// Update the import line to include updatePropertyOwner
 import { addTransaction, updatePlayerMoney, updatePlayerPosition, updatePropertyOwner } from '../store/gameSlice';
+import { Player } from '../types/gameTypes';
 
 type CommandType = 'MOVE' | 'PAY' | 'COLLECT' | 'BUY' | 'UNKNOWN';
 
@@ -15,217 +15,195 @@ interface ParsedCommand {
   error?: string;
 }
 
-// Update the parseVoiceCommand function to handle case-insensitive property names
+// Helper function to find a player by name. Case-insensitive.
+const findPlayerByName = (name: string, players: Player[]): Player | undefined => {
+  const trimmedName = name.trim().toLowerCase();
+  // Find player by full name (e.g., "Alice")
+  const player = players.find(p => p.name.toLowerCase() === trimmedName);
+  if (player) {
+    return player;
+  }
+  // Also handle "1", "2" if the user refers to them by ID/number
+  if (/^\d+$/.test(trimmedName)) {
+    return players.find(p => p.id === trimmedName);
+  }
+  return undefined;
+};
+
 export const parseVoiceCommand = (command: string): ParsedCommand => {
   const lowerCommand = command.toLowerCase();
   const state = store.getState();
-  
-  // Move command: "Player 1 moves to position 10" or "Move player 2 to Go"
-  if (lowerCommand.includes('move') || lowerCommand.includes('moves to')) {
-    const playerMatch = lowerCommand.match(/player\s*(\d+)/i);
-    const positionMatch = lowerCommand.match(/position\s*(\d+)/i) || lowerCommand.match(/to\s*(\d+)/i);
-    const propertyMatch = lowerCommand.match(/to\s+([a-zA-Z &]+)(?:$|\s)/i);
-    
+  const { players, properties } = state.game;
+
+  // Move command: "Player Alice moves to position 10" or "Move player Bob to Go"
+  if (lowerCommand.includes('move')) {
+    const playerMatch = lowerCommand.match(/(?:player|move player)\s+(.*?)\s+(?:moves to|to)/i);
     if (playerMatch) {
-      const playerId = playerMatch[1];
-      const player = state.game.players.find(p => p.id === playerId);
-      
+      const playerName = playerMatch[1].trim();
+      const player = findPlayerByName(playerName, players);
+
       if (!player) {
-        return {
-          type: 'UNKNOWN',
-          error: `Player ${playerId} does not exist`
-        };
+        return { type: 'UNKNOWN', error: `Player "${playerName}" not found` };
       }
-      
+
+      const positionMatch = lowerCommand.match(/position\s*(\d+)/i) || lowerCommand.match(/to\s*(\d+)/i);
+      const propertyMatch = lowerCommand.match(/to\s+([a-zA-Z\s&]+)(?:$|\s)/i);
+
       if (positionMatch) {
-        const position = parseInt(positionMatch[1]);
+        const position = parseInt(positionMatch[1], 10);
         if (position < 0 || position > 39) {
-          return {
-            type: 'UNKNOWN',
-            error: `Invalid position: ${position}. Position must be between 0 and 39.`
-          };
+          return { type: 'UNKNOWN', error: `Invalid position: ${position}. Must be 0-39.` };
         }
-        return {
-          type: 'MOVE',
-          playerId,
-          position
-        };
+        return { type: 'MOVE', playerId: player.id, position };
       } else if (propertyMatch) {
         const propertyName = propertyMatch[1].trim();
-        const property = state.game.properties.find(
-          p => p.name.toLowerCase() === propertyName.toLowerCase()
-        );
+        const property = properties.find(p => p.name.toLowerCase() === propertyName.toLowerCase());
         if (property) {
-          return {
-            type: 'MOVE',
-            playerId,
-            position: property.position
-          };
-        } else {
-          return {
-            type: 'UNKNOWN',
-            error: `Property "${propertyName}" not found`
-          };
+          return { type: 'MOVE', playerId: player.id, position: property.position };
         }
+        return { type: 'UNKNOWN', error: `Property "${propertyName}" not found` };
       }
-    } else {
-      return {
-        type: 'UNKNOWN',
-        error: 'No player specified in the command'
-      };
     }
   }
-  
-  // Payment command: "Player 1 pays 200 to player 2" or "Player 3 pays 150 to bank"
-  if (lowerCommand.includes('pay') || lowerCommand.includes('pays')) {
-    const fromPlayerMatch = lowerCommand.match(/player\s*(\d+)\s*pays/i);
-    const amountMatch = lowerCommand.match(/pays\s*(\d+)/i);
-    const toPlayerMatch = lowerCommand.match(/to\s*player\s*(\d+)/i);
-    
-    if (fromPlayerMatch && amountMatch) {
-      return {
-        type: 'PAY',
-        playerId: fromPlayerMatch[1],
-        amount: parseInt(amountMatch[1]),
-        targetId: toPlayerMatch ? toPlayerMatch[1] : undefined
-      };
+
+  // Payment command: "Player Alice pays 200 to player Bob" or "Player Charlie pays 150 to bank"
+  if (lowerCommand.includes('pay')) {
+    const paymentMatch = lowerCommand.match(/player\s+(.*?)\s+pays\s+(\d+)\s+to\s+(.*)/i);
+    if (paymentMatch) {
+        const fromPlayerName = paymentMatch[1].trim();
+        const amount = parseInt(paymentMatch[2], 10);
+        const targetName = paymentMatch[3].trim().replace(/^player\s+/, '');
+
+        const fromPlayer = findPlayerByName(fromPlayerName, players);
+        if (!fromPlayer) return { type: 'UNKNOWN', error: `Player "${fromPlayerName}" not found` };
+
+        if (targetName.toLowerCase() === 'bank') {
+            return { type: 'PAY', playerId: fromPlayer.id, amount, targetId: 'bank' };
+        }
+
+        const toPlayer = findPlayerByName(targetName, players);
+        if (!toPlayer) return { type: 'UNKNOWN', error: `Target Player "${targetName}" not found` };
+
+        return { type: 'PAY', playerId: fromPlayer.id, amount, targetId: toPlayer.id };
     }
   }
-  
-  // Collection command: "Player 2 collects 200 from bank" or "Player 1 collects 50 from player 3"
-  if (lowerCommand.includes('collect') || lowerCommand.includes('collects')) {
-    const toPlayerMatch = lowerCommand.match(/player\s*(\d+)\s*collects/i);
-    const amountMatch = lowerCommand.match(/collects\s*(\d+)/i);
-    const fromPlayerMatch = lowerCommand.match(/from\s*player\s*(\d+)/i);
-    
-    if (toPlayerMatch && amountMatch) {
-      return {
-        type: 'COLLECT',
-        playerId: toPlayerMatch[1],
-        amount: parseInt(amountMatch[1]),
-        targetId: fromPlayerMatch ? fromPlayerMatch[1] : undefined
-      };
-    }
+
+  // Collection command: "Player Bob collects 200 from bank" or "Player Alice collects 50 from player Charlie"
+  if (lowerCommand.includes('collect')) {
+      const collectionMatch = lowerCommand.match(/player\s+(.*?)\s+collects\s+(\d+)\s+from\s+(.*)/i);
+      if (collectionMatch) {
+          const toPlayerName = collectionMatch[1].trim();
+          const amount = parseInt(collectionMatch[2], 10);
+          const sourceName = collectionMatch[3].trim().replace(/^player\s+/, '');
+
+          const toPlayer = findPlayerByName(toPlayerName, players);
+          if (!toPlayer) return { type: 'UNKNOWN', error: `Player "${toPlayerName}" not found` };
+          
+          if (sourceName.toLowerCase() === 'bank') {
+              return { type: 'COLLECT', playerId: toPlayer.id, amount, targetId: 'bank' };
+          }
+
+          const fromPlayer = findPlayerByName(sourceName, players);
+          if (!fromPlayer) return { type: 'UNKNOWN', error: `Source Player "${sourceName}" not found` };
+
+          return { type: 'COLLECT', playerId: toPlayer.id, amount, targetId: fromPlayer.id };
+      }
   }
-  
-  // Buy property command: "Player 1 buys Mediterranean Avenue"
-  if (lowerCommand.includes('buy') || lowerCommand.includes('buys')) {
-    const playerMatch = lowerCommand.match(/player\s*(\d+)/i);
-    const propertyMatch = lowerCommand.match(/buys\s+([a-zA-Z &]+)(?:$|\s)/i);
-    
-    if (playerMatch && propertyMatch) {
-      const propertyName = propertyMatch[1].trim();
-      const property = store.getState().game.properties.find(
-        p => p.name.toLowerCase() === propertyName.toLowerCase()
-      );
+
+
+  // Buy property command: "Player Alice buys Boardwalk"
+  if (lowerCommand.includes('buy')) {
+    const buyMatch = lowerCommand.match(/player\s+(.*?)\s+buys\s+(.*)/i);
+    if (buyMatch) {
+      const playerName = buyMatch[1].trim();
+      const propertyName = buyMatch[2].trim();
       
+      const player = findPlayerByName(playerName, players);
+      if (!player) return { type: 'UNKNOWN', error: `Player "${playerName}" not found` };
+
+      const property = properties.find(p => p.name.toLowerCase() === propertyName.toLowerCase());
       if (property) {
-        return {
-          type: 'BUY',
-          playerId: playerMatch[1],
-          propertyId: property.id
-        };
+        return { type: 'BUY', playerId: player.id, propertyId: property.id };
       }
+      return { type: 'UNKNOWN', error: `Property "${propertyName}" not found` };
     }
   }
-  
-  return { type: 'UNKNOWN', error: 'Command not recognized' };
+
+  return { type: 'UNKNOWN', error: 'Command not recognized. Try "Player [Name] [action]..."' };
 };
 
-// Update the executeCommand function to handle error messages
 export const executeCommand = (command: string): string => {
   const parsedCommand = parseVoiceCommand(command);
-  
-  if (parsedCommand.type === 'UNKNOWN' && parsedCommand.error) {
-    return parsedCommand.error;
+
+  if (parsedCommand.type === 'UNKNOWN') {
+    return parsedCommand.error || 'Unknown command';
   }
-  
+
   const dispatch = store.dispatch;
   const state = store.getState();
-  
+
   switch (parsedCommand.type) {
     case 'MOVE':
       if (parsedCommand.playerId && parsedCommand.position !== undefined) {
+        dispatch(updatePlayerPosition({
+          playerId: parsedCommand.playerId,
+          position: parsedCommand.position
+        }));
         const player = state.game.players.find(p => p.id === parsedCommand.playerId);
-        // Add position validation (Monopoly board has 40 spaces, 0-39)
-        if (player && parsedCommand.position >= 0 && parsedCommand.position <= 39) {
-          dispatch(updatePlayerPosition({
-            playerId: parsedCommand.playerId,
-            position: parsedCommand.position
-          }));
-          return `Player ${parsedCommand.playerId} moved to position ${parsedCommand.position}`;
-        } else if (parsedCommand.position < 0 || parsedCommand.position > 39) {
-          return `Invalid position: ${parsedCommand.position}. Position must be between 0 and 39.`;
-        }
+        return `Player ${player?.name || parsedCommand.playerId} moved to position ${parsedCommand.position}`;
       }
       break;
-      
+
     case 'PAY':
-      if (parsedCommand.playerId && parsedCommand.amount) {
-        const player = state.game.players.find(p => p.id === parsedCommand.playerId);
-        if (player) {
-          dispatch(updatePlayerMoney({
-            playerId: parsedCommand.playerId,
-            amount: -parsedCommand.amount
+       if (parsedCommand.playerId && parsedCommand.amount && parsedCommand.targetId) {
+        const fromPlayer = state.game.players.find(p => p.id === parsedCommand.playerId);
+        if (!fromPlayer) break;
+
+        dispatch(updatePlayerMoney({ playerId: fromPlayer.id, amount: -parsedCommand.amount }));
+        
+        if (parsedCommand.targetId === 'bank') {
+          return `Player ${fromPlayer.name} paid $${parsedCommand.amount} to the bank`;
+        }
+        
+        const toPlayer = state.game.players.find(p => p.id === parsedCommand.targetId);
+        if (toPlayer) {
+          dispatch(updatePlayerMoney({ playerId: toPlayer.id, amount: parsedCommand.amount }));
+          dispatch(addTransaction({
+            id: Date.now(),
+            from: fromPlayer.id,
+            to: toPlayer.id,
+            amount: parsedCommand.amount,
+            timestamp: new Date(),
+            type: 'RENT'
           }));
-          
-          if (parsedCommand.targetId) {
-            const targetPlayer = state.game.players.find(p => p.id === parsedCommand.targetId);
-            if (targetPlayer) {
-              dispatch(updatePlayerMoney({
-                playerId: parsedCommand.targetId,
-                amount: parsedCommand.amount
-              }));
-              
-              dispatch(addTransaction({
-                id: Date.now(),
-                from: parsedCommand.playerId,
-                to: parsedCommand.targetId,
-                amount: parsedCommand.amount,
-                timestamp: new Date(),
-                type: 'RENT'
-              }));
-              
-              return `Player ${parsedCommand.playerId} paid $${parsedCommand.amount} to Player ${parsedCommand.targetId}`;
-            }
-          }
-          
-          return `Player ${parsedCommand.playerId} paid $${parsedCommand.amount} to the bank`;
+          return `Player ${fromPlayer.name} paid $${parsedCommand.amount} to Player ${toPlayer.name}`;
         }
       }
       break;
-      
+
     case 'COLLECT':
-      if (parsedCommand.playerId && parsedCommand.amount) {
-        const player = state.game.players.find(p => p.id === parsedCommand.playerId);
-        if (player) {
-          dispatch(updatePlayerMoney({
-            playerId: parsedCommand.playerId,
-            amount: parsedCommand.amount
-          }));
-          
-          if (parsedCommand.targetId) {
-            const targetPlayer = state.game.players.find(p => p.id === parsedCommand.targetId);
-            if (targetPlayer) {
-              dispatch(updatePlayerMoney({
-                playerId: parsedCommand.targetId,
-                amount: -parsedCommand.amount
-              }));
-              
-              dispatch(addTransaction({
+      if (parsedCommand.playerId && parsedCommand.amount && parsedCommand.targetId) {
+        const toPlayer = state.game.players.find(p => p.id === parsedCommand.playerId);
+        if(!toPlayer) break;
+
+        dispatch(updatePlayerMoney({ playerId: toPlayer.id, amount: parsedCommand.amount }));
+
+        if (parsedCommand.targetId === 'bank') {
+            return `Player ${toPlayer.name} collected $${parsedCommand.amount} from the bank`;
+        }
+
+        const fromPlayer = state.game.players.find(p => p.id === parsedCommand.targetId);
+        if(fromPlayer) {
+            dispatch(updatePlayerMoney({ playerId: fromPlayer.id, amount: -parsedCommand.amount }));
+            dispatch(addTransaction({
                 id: Date.now(),
-                from: parsedCommand.targetId,
-                to: parsedCommand.playerId,
+                from: fromPlayer.id,
+                to: toPlayer.id,
                 amount: parsedCommand.amount,
                 timestamp: new Date(),
                 type: 'RENT'
-              }));
-              
-              return `Player ${parsedCommand.playerId} collected $${parsedCommand.amount} from Player ${parsedCommand.targetId}`;
-            }
-          }
-          
-          return `Player ${parsedCommand.playerId} collected $${parsedCommand.amount} from the bank`;
+            }));
+            return `Player ${toPlayer.name} collected $${parsedCommand.amount} from Player ${fromPlayer.name}`;
         }
       }
       break;
@@ -234,31 +212,24 @@ export const executeCommand = (command: string): string => {
       if (parsedCommand.playerId && parsedCommand.propertyId) {
         const player = state.game.players.find(p => p.id === parsedCommand.playerId);
         const property = state.game.properties.find(p => p.id === parsedCommand.propertyId);
-        
+
         if (player && property && !property.owner) {
-          // Update player money
-          dispatch(updatePlayerMoney({
-            playerId: parsedCommand.playerId,
-            amount: -property.price
-          }));
-          
-          // Update property owner
-          dispatch(updatePropertyOwner({
-            propertyId: property.id,
-            ownerId: player.id
-          }));
-          
-          // Add transaction
+          if (player.money < property.price) {
+            return `Player ${player.name} does not have enough money to buy ${property.name}`;
+          }
+          dispatch(updatePlayerMoney({ playerId: player.id, amount: -property.price }));
+          dispatch(updatePropertyOwner({ propertyId: property.id, ownerId: player.id }));
           dispatch(addTransaction({
             id: Date.now(),
             from: player.id,
-            to: '0', // Bank
+            to: 'bank',
             amount: property.price,
             timestamp: new Date(),
             type: 'PURCHASE'
           }));
-          
-          return `Player ${player.id} bought ${property.name} for $${property.price}`;
+          return `Player ${player.name} bought ${property.name} for $${property.price}`;
+        } else if (property?.owner) {
+          return `${property.name} is already owned.`;
         }
       }
       break;
@@ -266,17 +237,6 @@ export const executeCommand = (command: string): string => {
     default:
       return `Command not recognized: ${command}`;
   }
-  
+
   return `Error processing command: ${command}`;
 };
-
-// Update the ParsedCommand interface
-interface ParsedCommand {
-  type: CommandType;
-  playerId?: string;
-  targetId?: string;
-  amount?: number;
-  position?: number;
-  propertyId?: number;
-  error?: string;
-}

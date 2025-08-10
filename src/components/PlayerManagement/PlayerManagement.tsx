@@ -47,12 +47,9 @@ const PlayerManagement: React.FC = () => {
         }
 
         dispatch(addPlayer({
-            id: Date.now(),
             name: playerName,
             money: 1500,
             position: 0,
-            properties: [],
-            cards: [],
             token: selectedToken.id,
             tokenIcon: selectedToken.icon,
             color: selectedToken.color

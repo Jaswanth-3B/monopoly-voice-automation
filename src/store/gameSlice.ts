@@ -22,10 +22,10 @@ const gameSlice = createSlice({
   name: 'game',
   initialState,
   reducers: {
-    addPlayer: (state, action) => {
+    addPlayer: (state, action: PayloadAction<AddPlayerPayload>) => {
       const newPlayer = {
-        id: String(state.players.length + 1), // Simple sequential ID as string
-        name: String(state.players.length + 1), // Use sequential numbers for names
+        id: String(Date.now()), // Use a timestamp for a unique ID
+        name: action.payload.name, // Use the name from the form
         money: action.payload.money,
         position: action.payload.position,
         properties: [],
